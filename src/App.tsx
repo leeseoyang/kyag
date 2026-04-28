@@ -23,6 +23,124 @@ import { cn } from './lib/utils';
 // Constants
 const MODEL_NAME = "gemini-3-flash-preview";
 
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.docx', '.hwp', '.hwpx'];
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+
+function getExtension(filename: string): string {
+  const dotIndex = filename.lastIndexOf('.');
+  if (dotIndex === -1) return '';
+  return filename.slice(dotIndex).toLowerCase();
+}
+
+function validateFile(file: File): { valid: true } | { valid: false; message: string } {
+  const ext = getExtension(file.name);
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return {
+      valid: false,
+      message: `지원하지 않는 파일 형식입니다: ${ext} (지원 형식: .txt, .md, .docx, .hwp, .hwpx)`,
+    };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      message: `파일 크기가 500MB를 초과합니다 (현재: ${Math.round(file.size / (1024 * 1024))}MB)`,
+    };
+  }
+  return { valid: true };
+}
+
+function selectParser(extension: string): 'text' | 'docx' | 'hwpx' | 'hwp' {
+  switch (extension) {
+    case '.txt':
+    case '.md':
+      return 'text';
+    case '.docx':
+      return 'docx';
+    case '.hwpx':
+      return 'hwpx';
+    case '.hwp':
+      return 'hwp';
+    default:
+      return 'text';
+  }
+}
+
+async function parseZipFile(buffer: ArrayBuffer): Promise<Map<string, Uint8Array>> {
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  const files = new Map<string, Uint8Array>();
+
+  // Find EOCD signature 0x06054b50 scanning backwards
+  let eocdOffset = -1;
+  for (let i = buffer.byteLength - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  if (eocdOffset === -1) {
+    throw new Error('ZIP 파일 형식이 올바르지 않습니다');
+  }
+
+  const cdEntryCount = view.getUint16(eocdOffset + 10, true);
+  const cdOffset = view.getUint32(eocdOffset + 16, true);
+
+  let cdPos = cdOffset;
+  for (let i = 0; i < cdEntryCount; i++) {
+    if (view.getUint32(cdPos, true) !== 0x02014b50) {
+      throw new Error('ZIP Central Directory 형식이 올바르지 않습니다');
+    }
+    const fileNameLength = view.getUint16(cdPos + 28, true);
+    const extraFieldLength = view.getUint16(cdPos + 30, true);
+    const commentLength = view.getUint16(cdPos + 32, true);
+    const localHeaderOffset = view.getUint32(cdPos + 42, true);
+    const fileName = new TextDecoder().decode(bytes.slice(cdPos + 46, cdPos + 46 + fileNameLength));
+    cdPos += 46 + fileNameLength + extraFieldLength + commentLength;
+
+    const lhOffset = localHeaderOffset;
+    if (view.getUint32(lhOffset, true) !== 0x04034b50) {
+      throw new Error('ZIP Local File Header 형식이 올바르지 않습니다');
+    }
+    const compressionMethod = view.getUint16(lhOffset + 8, true);
+    const compressedSize = view.getUint32(lhOffset + 18, true);
+    const lhFileNameLength = view.getUint16(lhOffset + 26, true);
+    const lhExtraFieldLength = view.getUint16(lhOffset + 28, true);
+    const dataOffset = lhOffset + 30 + lhFileNameLength + lhExtraFieldLength;
+
+    const compressedData = bytes.slice(dataOffset, dataOffset + compressedSize);
+
+    if (compressionMethod === 0) {
+      // Stored (no compression)
+      files.set(fileName, compressedData);
+    } else if (compressionMethod === 8) {
+      // Deflate — decompress using DecompressionStream('deflate-raw')
+      const ds = new DecompressionStream('deflate-raw');
+      const writer = ds.writable.getWriter();
+      const reader = ds.readable.getReader();
+      writer.write(compressedData);
+      writer.close();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
+      const decompressed = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        decompressed.set(chunk, offset);
+        offset += chunk.length;
+      }
+      files.set(fileName, decompressed);
+    } else {
+      throw new Error(`지원하지 않는 압축 방식입니다: ${compressionMethod}`);
+    }
+  }
+
+  return files;
+}
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
