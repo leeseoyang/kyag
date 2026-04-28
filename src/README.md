@@ -73,9 +73,9 @@
 
 | 항목 | 위치 |
 |---|---|
-| 사용자 시나리오·수용 기준 | `.kiro/specs/<name>/requirements.md` |
-| 구현 설계 | `.kiro/specs/<name>/design.md` |
-| 실행 단계 분해 | `.kiro/specs/<name>/tasks.md` |
-| 전역 규칙·도메인 컨텍스트 | `.kiro/specs/<name>/steering.md` |
+| 사용자 시나리오·수용 기준 | `.kiro/specs/docx-hwp-file-support/requirements.md` |
+| 구현 설계 | `.kiro/specs/docx-hwp-file-support/design.md` |
+| 실행 단계 분해 | `.kiro/specs/docx-hwp-file-support/tasks.md` |
+| 전역 규칙·도메인 컨텍스트 | `.kiro/specs/docx-hwp-file-support/steering.md` |
 | 자가 검증 항목 | `CHECKLIST.md` |
 | 테스트 입력 | `test-input/case-*.{txt,json,md}` |
