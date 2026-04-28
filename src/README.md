@@ -68,6 +68,7 @@
 핵심 출력 필드가 무엇인지만 명시할 것 (표·JSON·로그 어느 형태든 가능).
 <img width="3024" height="1964" alt="image" src="https://github.com/user-attachments/assets/23504b26-85f3-4490-a115-ffb2848a776b" />
 
+<img width="1508" height="807" alt="image" src="https://github.com/user-attachments/assets/d8dd77c8-ffc8-4392-8ae7-334c598caa7c" />
 
 ---
 
