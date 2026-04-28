@@ -1,0 +1,6 @@
+{
+  "name": "Requirement Compliance Checker",
+  "description": "Upload a file and input requirements to check for non-compliance and modify accordingly using AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
