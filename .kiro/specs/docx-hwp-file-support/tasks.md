@@ -50,7 +50,7 @@
   - 유효하지 않은 ZIP 시그니처 시 오류 throw
   - _Requirements: 2.1, 2.3, 3.1, 3.3_
 
-- [-] 3. DOCX 파서 구현 (`parseDocx`)
+- [x] 3. DOCX 파서 구현 (`parseDocx`)
   - `parseDocx(buffer: ArrayBuffer): Promise<string>` 구현 (모듈 스코프)
   - `parseZipFile`로 ZIP 엔트리 맵 획득
   - `word/document.xml` 엔트리 추출 → `TextDecoder`로 UTF-8 디코딩
@@ -71,7 +71,7 @@
     - N개(N ≥ 2) 단락을 가진 DOCX에 대해 결과 문자열에 최소 (N-1)개의 `\n`이 포함됨을 검증
     - **Validates: Requirements 2.2**
 
-- [~] 4. HWPX 파서 구현 (`parseHwpx`)
+- [x] 4. HWPX 파서 구현 (`parseHwpx`)
   - `parseHwpx(buffer: ArrayBuffer): Promise<string>` 구현 (모듈 스코프)
   - `parseZipFile`로 ZIP 엔트리 맵 획득
   - `Contents/section0.xml`, `Contents/section1.xml` 등 섹션 파일 순차 처리 (존재하는 섹션만)
@@ -91,12 +91,12 @@
     - ZIP 시그니처가 없는 임의 바이너리에 대해 `parseDocx`와 `parseHwpx` 모두 반드시 오류를 throw함을 검증
     - **Validates: Requirements 2.3, 3.3**
 
-- [~] 5. Checkpoint — 파서 함수 단위 검증
+- [x] 5. Checkpoint — 파서 함수 단위 검증
   - 모든 순수 함수(`validateFile`, `selectParser`, `parseZipFile`, `parseDocx`, `parseHwpx`)가 독립적으로 올바르게 동작하는지 확인한다.
   - 테스트 프레임워크가 없는 경우 브라우저 콘솔에서 직접 호출하여 확인한다.
   - 구현 중 의문 사항이 있으면 사용자에게 질문한다.
 
-- [~] 6. `handleFileChange` 수정 및 오류 처리 연결
+- [-] 6. `handleFileChange` 수정 및 오류 처리 연결
   - 기존 동기 `handleFileChange`를 `async` 함수로 교체
   - `validateFile` 호출 → 실패 시 `setError` 후 파일 입력 초기화 및 return
   - `selectParser`로 파서 타입 결정

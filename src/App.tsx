@@ -141,6 +141,84 @@ async function parseZipFile(buffer: ArrayBuffer): Promise<Map<string, Uint8Array
   return files;
 }
 
+async function parseDocx(buffer: ArrayBuffer): Promise<string> {
+  const entries = await parseZipFile(buffer);
+  const docXmlBytes = entries.get('word/document.xml');
+  if (!docXmlBytes) {
+    throw new Error('word/document.xml을 찾을 수 없습니다');
+  }
+  const xmlString = new TextDecoder('utf-8').decode(docXmlBytes);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlString, 'text/xml');
+
+  const body = doc.querySelector('body');
+  if (!body) {
+    throw new Error('word/document.xml에서 body 요소를 찾을 수 없습니다');
+  }
+
+  const paragraphs = body.querySelectorAll('p');
+  const lines: string[] = [];
+
+  paragraphs.forEach((para) => {
+    // Skip paragraphs inside headers/footers
+    if (para.closest('hdr') || para.closest('ftr')) return;
+
+    const textNodes = para.querySelectorAll('t');
+    const lineText = Array.from(textNodes)
+      .map(t => t.textContent || '')
+      .join('');
+    lines.push(lineText);
+  });
+
+  return lines.join('\n');
+}
+
+function readAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target?.result as string);
+    reader.onerror = () => reject(new Error('파일 읽기 실패'));
+    reader.readAsText(file);
+  });
+}
+
+async function parseHwpx(buffer: ArrayBuffer): Promise<string> {
+  const entries = await parseZipFile(buffer);
+
+  const allLines: string[] = [];
+  let sectionIndex = 0;
+
+  while (true) {
+    const sectionKey = `Contents/section${sectionIndex}.xml`;
+    const sectionBytes = entries.get(sectionKey);
+
+    if (!sectionBytes) {
+      if (sectionIndex === 0) {
+        throw new Error('Contents/section0.xml을 찾을 수 없습니다');
+      }
+      break; // No more sections
+    }
+
+    const xmlString = new TextDecoder('utf-8').decode(sectionBytes);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlString, 'text/xml');
+
+    const paragraphs = doc.querySelectorAll('p');
+
+    paragraphs.forEach((para) => {
+      const textNodes = para.querySelectorAll('t');
+      const lineText = Array.from(textNodes)
+        .map(t => t.textContent || '')
+        .join('');
+      allLines.push(lineText);
+    });
+
+    sectionIndex++;
+  }
+
+  return allLines.join('\n');
+}
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
@@ -152,15 +230,54 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFileContent(event.target?.result as string);
-      };
-      reader.readAsText(selectedFile);
+    if (!selectedFile) return;
+
+    // 1. Validate file
+    const validation = validateFile(selectedFile);
+    if (!validation.valid) {
+      setError(validation.message);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    // 2. Select parser
+    const ext = getExtension(selectedFile.name);
+    const parserType = selectParser(ext);
+
+    // 3. HWP binary guidance
+    if (parserType === 'hwp') {
+      setError(`HWP(구버전) 파일은 브라우저에서 직접 파싱할 수 없습니다. 한글에서 '다른 이름으로 저장 → HWPX' 형식으로 변환 후 업로드해 주세요.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    // 4. Parse (reuse isAnalyzing state for loading indicator)
+    setFile(selectedFile);
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      let text = "";
+      if (parserType === 'text') {
+        text = await readAsText(selectedFile);
+      } else {
+        const buffer = await selectedFile.arrayBuffer();
+        if (parserType === 'docx') {
+          text = await parseDocx(buffer);
+        } else {
+          text = await parseHwpx(buffer);
+        }
+      }
+      setFileContent(text);
+    } catch (err) {
+      setError(`'${selectedFile.name}' 파싱 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      setFile(null);
+      setFileContent("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
