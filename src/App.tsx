@@ -237,7 +237,7 @@ export default function App() {
     // 1. Validate file
     const validation = validateFile(selectedFile);
     if (!validation.valid) {
-      setError(validation.message);
+      setError((validation as { valid: false; message: string }).message);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }

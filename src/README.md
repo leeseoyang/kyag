@@ -1,4 +1,4 @@
-# <Agent 이름>
+# <S(study)KY>
 
 > 이 README는 채점자가 가장 먼저 읽는 표지입니다. 각 섹션을 빠짐없이 채워 주세요. 이 안에 적은 내용은 `requirements.md`, `steering.md` 등 자산과 일관되어야 합니다.
 

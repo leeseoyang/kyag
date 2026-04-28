@@ -96,7 +96,7 @@
   - 테스트 프레임워크가 없는 경우 브라우저 콘솔에서 직접 호출하여 확인한다.
   - 구현 중 의문 사항이 있으면 사용자에게 질문한다.
 
-- [-] 6. `handleFileChange` 수정 및 오류 처리 연결
+- [x] 6. `handleFileChange` 수정 및 오류 처리 연결
   - 기존 동기 `handleFileChange`를 `async` 함수로 교체
   - `validateFile` 호출 → 실패 시 `setError` 후 파일 입력 초기화 및 return
   - `selectParser`로 파서 타입 결정
@@ -112,7 +112,7 @@
     - 임의 파일명과 오류 원인에 대해 파싱 실패 시 `error` 상태 문자열이 파일명과 오류 원인을 모두 포함함을 검증
     - **Validates: Requirements 6.1**
 
-- [~] 7. UI 수정 — `accept` 속성 및 로딩 표시
+- [-] 7. UI 수정 — `accept` 속성 및 로딩 표시
   - 파일 `<input>` 요소의 `accept` 속성을 `.txt,.md,.docx,.hwp,.hwpx`로 설정
   - 파싱 중(`isAnalyzing`) 로딩 표시: 기존 `Loader2` 아이콘 재활용 (이미 중앙 패널 버튼에 존재)
   - 파일 업로드 영역에도 파싱 중 상태 시각적 피드백 추가 (선택적)
